@@ -1,18 +1,91 @@
-import os, json, argparse, requests
-from typing import List, Dict, Any
+# scripts/llm_rag_demo.py
+# RAG → LLM demo with external, versioned prompts: planner → retrieve(+1/+2) → answer
+
+import os, json, argparse, requests, re
+from typing import List, Dict, Any, Tuple, Optional
+from pathlib import Path
+
 import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
+# ------------------- Constants / defaults -------------------
 DOC_ID = "SA_PHC_STG_2024_Respiratory"
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-OPENAI_MODEL = "gpt-4o-mini"  # swap if you prefer another model
+OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 
-# ------------------- Loading API key -------------------
+# Project root (…/project), assuming this file is at project/scripts/...
+ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(dotenv_path=ROOT / ".env")
 
-load_dotenv()
+# ---- Fallback prompts (used if files are missing) ----
+PLANNER_SYSTEM_FALLBACK = """You are a query planner for a medical RAG system.
+Given a visit note, output 1-3 short search queries targeting a Respiratory chapter in South African paediatric guidelines.
+Prefer concrete clinical terms (condition, drug, route, dose, severity, disposition).
+Return ONLY valid JSON of the form: {"queries": ["q1","q2", ...]}"""
+
+ANSWER_SYSTEM_FALLBACK = """You are a clinical decision-support assistant.
+You MUST use only the provided Context from the guideline to answer.
+Cite the context as: [Respiratory chapter, p. {page_start}-{page_end}].
+If key info is missing, say so explicitly.
+This is a demo and not medical advice."""
+
+ANSWER_USER_TMPL_FALLBACK = """Visit note:
+{note}
+
+Context (from guideline):
+{context}
+
+Write a management plan tailored to the note. Include:
+- Assessment (severity reasoning)
+- Treatment (include steroid choice; do NOT invent doses yet)
+- Monitoring / reassessment
+- Criteria for escalation / disposition
+- Explicit citations for key claims using the page range provided.
+"""
+
+# ------------------- Versioned prompt loader -------------------
+def _read_text(path: Path) -> Optional[str]:
+    try:
+        if path.is_file():
+            return path.read_text(encoding="utf-8").strip()
+    except Exception:
+        pass
+    return None
+
+def _natural_key(s: str):
+    # sort v1, v1.1, v2-2025-01-15 naturally
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
+
+def _resolve_version_dir(base: Path, requested: Optional[str]) -> Path:
+    if requested:
+        cand = base / requested
+        if cand.is_dir():
+            return cand
+        raise FileNotFoundError(f"Prompt version '{requested}' not found under {base}")
+    # Prefer 'current' if present
+    cur = base / "current"
+    if cur.exists() and cur.is_dir():
+        return cur
+    # Else pick the latest by natural sort
+    versions = [p for p in base.iterdir() if p.is_dir() and not p.name.startswith(".")]
+    if not versions:
+        raise FileNotFoundError(f"No prompt versions found under {base}")
+    versions.sort(key=lambda p: _natural_key(p.name))
+    return versions[-1]
+
+def load_prompts_versioned(base_dir: Path, version: Optional[str]) -> Dict[str, str]:
+    vdir = _resolve_version_dir(base_dir, version)
+    planner = _read_text(vdir / "planner_system.txt") or PLANNER_SYSTEM_FALLBACK
+    answer_sys = _read_text(vdir / "answer_system.txt") or ANSWER_SYSTEM_FALLBACK
+    answer_user = _read_text(vdir / "answer_user_tmpl.txt") or ANSWER_USER_TMPL_FALLBACK
+    return {
+        "PLANNER_SYSTEM": planner,
+        "ANSWER_SYSTEM": answer_sys,
+        "ANSWER_USER_TMPL": answer_user,
+    }
 
 # ------------------ Chroma RAG client ------------------
 class RAGClient:
@@ -80,36 +153,10 @@ def openai_chat(messages: List[Dict[str, str]], temperature=0.2):
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
-# ------------------ Prompts ------------------
-PLANNER_SYSTEM = """You are a query planner for a medical RAG system.
-Given a visit note, output 1-3 short search queries targeting a Respiratory chapter in South African paediatric guidelines.
-Prefer concrete clinical terms (condition, drug, route, dose, severity, disposition).
-Return ONLY valid JSON of the form: {"queries": ["q1","q2", ...]}"""
-
-ANSWER_SYSTEM = """You are a clinical decision-support assistant.
-You MUST use only the provided Context from the guideline to answer.
-Cite the context as: [Respiratory chapter, p. {page_start}-{page_end}].
-If key info is missing, say so explicitly.
-This is a demo and not medical advice."""
-
-ANSWER_USER_TMPL = """Visit note:
-{note}
-
-Context (from guideline):
-{context}
-
-Write a management plan tailored to the note. Include:
-- Assessment (severity reasoning)
-- Treatment (include steroid choice; do NOT invent doses yet)
-- Monitoring / reassessment
-- Criteria for escalation / disposition
-- Explicit citations for key claims using the page range provided.
-"""
-
-# ------------------ Pipeline ------------------
-def plan_queries(note: str) -> List[str]:
+# ------------------ Pipeline (reads prompts dict) ------------------
+def plan_queries(note: str, prompts: Dict[str, str]) -> List[str]:
     msg = [
-        {"role": "system", "content": PLANNER_SYSTEM},
+        {"role": "system", "content": prompts["PLANNER_SYSTEM"]},
         {"role": "user", "content": note.strip()[:4000]},
     ]
     out = openai_chat(msg, temperature=0.0)
@@ -118,7 +165,6 @@ def plan_queries(note: str) -> List[str]:
         queries = [q.strip() for q in data.get("queries", []) if q.strip()]
         return queries[:3] or ["croup steroid dose management"]
     except Exception:
-        # fallback: single broad query
         return ["croup steroid dose management"]
 
 def retrieve_context(rag: RAGClient, queries: List[str], doc_id: str, k=4, above=1, below=2) -> Dict[str, Any]:
@@ -128,43 +174,47 @@ def retrieve_context(rag: RAGClient, queries: List[str], doc_id: str, k=4, above
         hits = rag.query(q, doc_id=doc_id, k=k)
         for h in hits:
             m = h["metadata"]; key = (m["doc_id"], m["window_id"])
-            if key in seen: continue
+            if key in seen: 
+                continue
             seen.add(key)
             stitched = rag.stitch_neighbors(h, above=above, below=below)
             if stitched:
                 windows.append({"text": stitched["text"], "pages": stitched["pages"], "q": q, "dist": h["distance"]})
-    # Sort by distance (smaller is better for cosine in Chroma)
     windows.sort(key=lambda x: x["dist"])
     if not windows:
         return {"context": "", "pages": (0,0), "queries": queries}
-    # Concatenate top few windows until ~1500-2000 words
     combined, words, first_pages = [], 0, windows[0]["pages"]
     for w in windows:
         w_words = len(w["text"].split())
-        if words + w_words > 1800: break
+        if words + w_words > 1800:
+            break
         combined.append(w["text"])
         words += w_words
     return {"context": "\n\n---\n\n".join(combined), "pages": first_pages, "queries": queries}
 
-def answer_with_context(note: str, context: str, pages):
+def answer_with_context(note: str, context: str, pages: Tuple[int, int], prompts: Dict[str, str]):
     page_start, page_end = pages
-    cite = f"[Respiratory chapter, p. {page_start}-{page_end}]"
     msgs = [
-        {"role": "system", "content": ANSWER_SYSTEM},
-        {"role": "user", "content": ANSWER_USER_TMPL.format(note=note, context=context)},
+        {"role": "system", "content": prompts["ANSWER_SYSTEM"]},
+        {"role": "user", "content": prompts["ANSWER_USER_TMPL"].format(note=note, context=context)},
     ]
     out = openai_chat(msgs, temperature=0.2)
-    return out + f"\n\n**References:** {cite}"
+    return out + f"\n\n**References:** [Respiratory chapter, p. {page_start}-{page_end}]"
 
+# ------------------ CLI ------------------
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--note", required=False, help="Visit note text; if omitted, a demo note is used.")
     ap.add_argument("--doc-id", default=DOC_ID)
-    ap.add_argument("--db", default="./chroma_db")
+    ap.add_argument("--db", default=str(ROOT / "chroma_db"))
     ap.add_argument("--k", type=int, default=4)
     ap.add_argument("--above", type=int, default=1)
     ap.add_argument("--below", type=int, default=2)
+    ap.add_argument("--prompts-dir", default=str(ROOT / "prompts"), help="Base directory that contains version folders")
+    ap.add_argument("--prompts-version", default=None, help="e.g., v1, v1.1, v2-2025-01-15; default = 'current' or latest by name")
     args = ap.parse_args()
+
+    prompts = load_prompts_versioned(Path(args.prompts_dir), args.prompts_version)
 
     note = args.note or (
         "3-year-old with barky cough, hoarse voice, inspiratory stridor at rest. "
@@ -172,12 +222,13 @@ def main():
     )
 
     rag = RAGClient(db_path=args.db)
-    queries = plan_queries(note)
+    queries = plan_queries(note, prompts)
     ctx = retrieve_context(rag, queries, doc_id=args.doc_id, k=args.k, above=args.above, below=args.below)
     if not ctx["context"]:
         print("No context found. Queries tried:", queries)
         return
-    result = answer_with_context(note, ctx["context"], ctx["pages"])
+    result = answer_with_context(note, ctx["context"], ctx["pages"], prompts)
+
     print("\n=== Queries ===")
     for q in ctx["queries"]:
         print("-", q)
