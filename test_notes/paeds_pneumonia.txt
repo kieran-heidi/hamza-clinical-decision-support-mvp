@@ -1,0 +1,40 @@
+## 🩺 Pediatric Clinical Note
+
+---
+
+### Patient Information
+- **Patient:** Ethan B.
+- **DOB:** 10/15/2020
+- **Age:** 5 years
+- **Weight:** 15 kg
+
+### Presenting Complaint
+- Ethan presented with a **4-day history of cough and fever** that has worsened in the last 24 hours.
+- The cough is now **productive** and he has experienced **difficulty breathing** and is tiring easily.
+- Parents report a sustained high fever despite antipyretics.
+
+### History
+- **Onset:** Started 4 days ago with general malaise, lethargy, and a non-specific cough.
+- **Progression:** Fever (up to $39.5^\circ\text{C}$) became more sustained. Cough is now deep and associated with occasional pleuritic-type chest pain.
+- **Respiratory Symptoms:** Reports feeling short of breath, and parents noted **tachypnoea** (fast breathing) and decreased appetite.
+- **Feeding/Fluid Intake:** Reduced fluid intake but no signs of severe dehydration.
+- **Past Medical History:** No history of asthma, recurrent infections, or chronic respiratory disease.
+- **Immunization/Development:** Fully vaccinated and developmentally appropriate for age.
+- **Allergies:** No known drug allergies.
+
+### Examination
+- **General:** Alert but **moderately unwell**, lying still, reluctant to move, flushed appearance.
+- **Vitals:** RR 40 (mild tachypnoea for age), HR 110, SpO2 94% on room air, T $38.9^\circ\text{C}$.
+- **Respiratory:** Mild retractions (intercostal), but no accessory muscle use or nasal flaring. **Focal coarse crackles** and **bronchial breath sounds** noted over the right lower lung field. Percussion is dull over the same area. No significant wheeze.
+- **ENT:** Mild erythema of the throat, no tonsillar exudate.
+- **CVS:** Normal S1/S2, capillary refill time < 3 seconds.
+- **Hydration:** Adequate.
+
+### Assessment
+- Ethan presents with clinical features highly suggestive of **community-acquired pneumonia (CAP)**, likely bacterial in origin.
+- He has mild hypoxia (SpO2 94%) and tachypnoea, but is **not in severe respiratory distress** and is tolerating oral intake.
+- Candidate for **outpatient management** with close follow-up.
+- No signs suggestive of complications (e.g., empyema, sepsis).
+
+### Plan
+- Plan as per local guidelines for community-acquired pneumonia in children.

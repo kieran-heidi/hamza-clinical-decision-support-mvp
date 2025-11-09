@@ -1,0 +1,35 @@
+- **Patient:** Lily A.
+- **DOB:** 05/20/2024
+- **Age:** 18 months
+- **Weight:** 10.5 kg
+
+### Presenting Complaint
+- Lily presented with a **3-day history of cold symptoms** (runny nose, cough) that have progressed over the last 24 hours to include **wheezing** and a slightly increased effort of breathing.
+- She has been **feeding well**, with wet diapers maintained.
+- Parents report a low-grade fever initially.
+- No history of cyanosis, apnoea, or significant distress.
+
+### History
+- **Onset:** 3 days ago with rhinorrhoea (clear) and mild cough.
+- **Progression:** Cough became more frequent, and a slight wheeze and increased work of breathing were noted this morning.
+- **Feeding/Fluid Intake:** Taking 75% of usual feeds but maintaining adequate hydration (wet diapers every 4-6 hours).
+- **Fever:** Peak temperature of $38.0^\circ\text{C}$ on day 2, now afebrile.
+- **Risk Factors:** No known sick contacts outside the household. No history of prematurity, chronic lung disease, or congenital heart disease. Attends daycare.
+- **Immunization/Development:** Fully vaccinated and developmentally appropriate for age.
+- **Allergies:** No known drug allergies.
+
+### Examination
+- **General:** Alert, interactive, comfortable on parent's lap, not obviously distressed.
+- **Vitals:** RR 38, HR 135, SpO2 96% on room air, T $36.8^\circ\text{C}$.
+- **Respiratory:** Mild subcostal recession only on exertion, but none at rest. Diffuse polyphonic expiratory wheeze noted on auscultation. Air entry bilaterally is good. Mild scattered crackles.
+- **ENT:** Clear rhinorrhoea, mild erythema of oropharynx.
+- **CVS:** Normal S1/S2, capillary refill time < 2 seconds.
+- **Hydration:** Mucous membranes moist, good skin turgor.
+
+### Assessment
+- Lily presents with classic signs and symptoms of **mild, uncomplicated bronchiolitis**, most likely viral (RSV vs. others).
+- She is **well-hydrated** and shows only minimal signs of respiratory distress, making her a candidate for **outpatient management**.
+- No signs of bacterial superinfection or other serious differentials.
+
+### Plan
+- Plan as per local guidelines for bronchiolitis

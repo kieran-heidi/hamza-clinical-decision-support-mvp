@@ -1,0 +1,34 @@
+Patient: Jack T.
+DOB: 12/03/2022
+Age: 3 years
+Weight: 14.2 kg
+
+Presenting complaint:
+Jack presented with a 2-day history of barky cough, hoarse voice, and low-grade fever. Symptoms worsened overnight, with increased work of breathing and stridor noted at rest this morning. No history of choking, foreign body aspiration, or recent travel. No known sick contacts outside the household. 
+
+History:
+- Onset of URTI symptoms 2 days ago, including rhinorrhoea and dry cough
+- Barking cough began yesterday evening, hoarseness and intermittent inspiratory stridor overnight
+- Mild fever (up to 38.4°C) controlled with paracetamol
+- No cyanosis or apnoea reported
+- Fully vaccinated and developmentally appropriate for age
+- No history of asthma or other chronic respiratory illness
+- No previous episodes of croup
+- No drug allergies
+
+Examination:
+- Alert, mildly distressed, sitting upright with audible inspiratory stridor at rest
+- Barky cough noted during assessment
+- Mild suprasternal and intercostal recession
+- RR 32, HR 124, SpO2 97% on room air, T 37.9°C
+- Chest: clear air entry bilaterally, no wheeze or crackles
+- ENT: mild erythema of oropharynx, no tonsillar exudate
+- CVS: normal S1/S2, no murmurs
+- Neurological: alert, interactive, normal tone and reflexes
+
+Assessment:
+Jack presents with classic features of moderate croup (laryngotracheobronchitis), likely viral in origin. No signs of severe respiratory distress or impending airway obstruction. No signs suggestive of bacterial tracheitis or other differentials (e.g. foreign body, epiglottitis).
+
+Plan:
+- Administer corticosteroids
+- Plan as per local guidelines for croup

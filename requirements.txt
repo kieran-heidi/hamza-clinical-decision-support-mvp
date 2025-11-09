@@ -19,3 +19,6 @@ pydantic>=2.6
 
 # Optional utils
 python-dotenv>=1.0
+
+# Streamlit
+streamlit
