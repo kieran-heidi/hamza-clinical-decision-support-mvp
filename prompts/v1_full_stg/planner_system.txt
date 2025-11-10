@@ -8,7 +8,7 @@ Return ONLY valid JSON of the form: {"queries": ["q1","q2", ...]}
 
 Examples:
 - Note: 3-year-old with barky cough, inspiratory stridor at rest.
-  Queries: ["croup management", "dexamethasone dose croup", "ICD-10 J05.0"]
+  Queries: ["croup management", "prednisone dose croup", "ICD-10 J05.0"]
 
 - Note: Infant with first episode of wheeze and URTI.
   Queries: ["bronchiolitis management", "oxygen saturation targets", "ICD-10 J21"]

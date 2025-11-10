@@ -10,7 +10,7 @@ try:
 except Exception:
     pass
 
-# ---- Import your helpers ----
+# ---- Import helpers from your script ----
 from scripts.llm_rag_demo import (
     RAGClient,
     plan_queries,
@@ -18,6 +18,10 @@ from scripts.llm_rag_demo import (
     answer_with_context,
     load_prompts_versioned,
     DOC_ID,
+    # dosing helpers
+    retrieve_dosing_context,
+    build_dosing_table,
+    generate_dosing_queries_from_plan,  # LLM-derived queries from plan
 )
 
 # ---- Streamlit page ----
@@ -29,15 +33,19 @@ DB_PATH = str(Path.cwd() / "chroma_db")
 
 # ---- Session state init ----
 def _init_state():
-    for k, v in {
+    defaults = {
         "plan_ready": False,
         "plan_md": "",
         "ctx": None,
         "queries": [],
         "doc_id_used": "",
         "error": "",
-    }.items():
+        "dosing_table_md": "",
+        "dosing_queries": [],
+    }
+    for k, v in defaults.items():
         st.session_state.setdefault(k, v)
+
 _init_state()
 
 # ---- Utilities ----
@@ -46,7 +54,7 @@ def get_doc_ids(db_path: str):
     """Return all doc_ids in the vector store (cached)."""
     try:
         rag_tmp = RAGClient(db_path=db_path)
-        return rag_tmp.list_doc_ids()  # ensure RAGClient has list_doc_ids()
+        return rag_tmp.list_doc_ids()
     except Exception:
         return []
 
@@ -57,9 +65,12 @@ def clear_plan_state():
     st.session_state["queries"] = []
     st.session_state["doc_id_used"] = ""
     st.session_state["error"] = ""
+    st.session_state["dosing_table_md"] = ""
+    st.session_state["dosing_queries"] = []
 
+# ---- Quick dose calculator (optional max dose, no upper limits) ----
 def render_dose_calculator_form():
-    """Quick dose calculator as a FORM; persists last result in session state."""
+    """Quick dose calculator as a FORM (optional max dose, no upper limits). Persists last result."""
     st.divider()
     st.markdown("### Quick dose calculator")
 
@@ -68,35 +79,35 @@ def render_dose_calculator_form():
         st.session_state[dkey] = {
             "weight": 12.0,
             "mgkg": 0.6,
-            "drug": "dexamethasone",
-            "use_cap": True,
-            "cap": 10.0,
+            "drug": "drug name",     # default label
+            "use_max": False,        # optional max-dose switch
+            "max_mg": 0.0,           # max dose (mg); <=0 means ignored
             "use_round": True,
             "round_inc": 0.5,
             "exact": None,
-            "capped": None,
-            "rounded": None,
+            "limited": None,         # after applying max dose (if any)
+            "final": None,           # after rounding (if any)
         }
 
     def _round_to_inc(value: float, inc: float) -> float:
-        if inc and inc > 0:
-            return round(value / inc) * inc
-        return value
+        if inc is None or inc <= 0:
+            return value
+        return round(value / inc) * inc
 
     with st.form("dose_calc_form", clear_on_submit=False):
         colA, colB, colC = st.columns([1, 1, 1])
         with colA:
             weight_kg = st.number_input(
                 "Patient weight (kg)",
-                min_value=2.0, max_value=80.0, step=0.5,
-                value=st.session_state[dkey]["weight"],
+                min_value=0.0, step=0.1,
+                value=float(st.session_state[dkey]["weight"]),
                 key="form_weight",
             )
         with colB:
             mg_per_kg = st.number_input(
                 "Recommended dose (mg/kg)",
-                min_value=0.05, max_value=5.0, step=0.05,
-                value=st.session_state[dkey]["mgkg"],
+                min_value=0.0, step=0.01,
+                value=float(st.session_state[dkey]["mgkg"]),
                 key="form_mgkg",
             )
         with colC:
@@ -108,16 +119,18 @@ def render_dose_calculator_form():
 
         c1, c2 = st.columns([1, 1])
         with c1:
-            use_cap = st.checkbox(
-                "Apply max cap (mg)?",
-                value=st.session_state[dkey]["use_cap"],
-                key="form_cap_on",
+            use_max = st.checkbox(
+                "Apply max dose (mg)?",
+                value=st.session_state[dkey]["use_max"],
+                key="form_max_on",
             )
-            cap_mg = st.number_input(
+            # Always enabled so you can edit it before submit
+            max_mg = st.number_input(
                 "Max dose (mg)",
-                min_value=1.0, max_value=100.0, step=0.5,
-                value=st.session_state[dkey]["cap"],
-                disabled=not use_cap, key="form_cap",
+                min_value=0.0, step=0.1,
+                value=float(st.session_state[dkey]["max_mg"]),
+                key="form_max",
+                help="Applied only if the checkbox above is ticked.",
             )
         with c2:
             use_round = st.checkbox(
@@ -127,57 +140,79 @@ def render_dose_calculator_form():
             )
             round_inc = st.number_input(
                 "Rounding increment (mg)",
-                min_value=0.1, max_value=10.0, step=0.1,
-                value=st.session_state[dkey]["round_inc"],
-                disabled=not use_round, key="form_round",
+                min_value=0.0, step=0.1,
+                value=float(st.session_state[dkey]["round_inc"]),
+                key="form_round",
+                help="If 0, rounding is skipped.",
             )
 
         submitted = st.form_submit_button("Calculate dose")
 
     if submitted:
-        exact_mg = weight_kg * mg_per_kg
-        capped_mg = min(exact_mg, cap_mg) if use_cap else exact_mg
-        rounded_mg = _round_to_inc(capped_mg, round_inc) if use_round else capped_mg
+        # Store inputs first
         st.session_state[dkey].update({
             "weight": weight_kg, "mgkg": mg_per_kg, "drug": drug_name,
-            "use_cap": use_cap, "cap": cap_mg, "use_round": use_round, "round_inc": round_inc,
-            "exact": exact_mg, "capped": capped_mg, "rounded": rounded_mg,
+            "use_max": use_max, "max_mg": max_mg,
+            "use_round": use_round, "round_inc": round_inc,
         })
+
+        if weight_kg <= 0 or mg_per_kg <= 0:
+            st.info("Enter a positive weight and mg/kg rule to calculate a dose.")
+            st.session_state[dkey].update({"exact": None, "limited": None, "final": None})
+        else:
+            exact = weight_kg * mg_per_kg
+            # Apply optional max dose (if set and > 0)
+            limited = min(exact, max_mg) if (use_max and max_mg > 0) else exact
+            # Apply optional rounding (after max-dose)
+            final = _round_to_inc(limited, round_inc) if (use_round and round_inc > 0) else limited
+
+            st.session_state[dkey].update({
+                "exact": exact,
+                "limited": limited,
+                "final": final,
+            })
 
     ds = st.session_state[dkey]
     if ds["exact"] is not None:
         st.write("**Calculation**")
         lines = [
             "Weight × mg/kg = exact dose",
-            f"{ds['weight']:.1f} kg × {ds['mgkg']:.3g} mg/kg = {ds['exact']:.2f} mg",
+            f"{ds['weight']:.2f} kg × {ds['mgkg']:.4g} mg/kg = {ds['exact']:.2f} mg",
         ]
-        if ds["use_cap"]:
-            lines.append(f"Apply cap: min({ds['exact']:.2f}, {ds['cap']:.2f}) = {ds['capped']:.2f} mg")
+        if ds["use_max"] and ds["max_mg"] > 0:
+            if ds["exact"] > ds["max_mg"]:
+                lines.append(f"Apply max dose: min({ds['exact']:.2f}, {ds['max_mg']:.2f}) = {ds['limited']:.2f} mg")
+            else:
+                lines.append(f"Apply max dose: exact does not exceed {ds['max_mg']:.2f} mg → {ds['limited']:.2f} mg")
         if ds["use_round"]:
-            lines.append(f"Round to {ds['round_inc']:.3g} mg → {ds['rounded']:.2f} mg")
+            if ds["round_inc"] > 0:
+                lines.append(f"Round to {ds['round_inc']:.4g} mg → {ds['final']:.2f} mg")
+            else:
+                lines.append("Rounding disabled (increment ≤ 0).")
         st.code("\n".join(lines))
-        st.success(f"**Administered dose: {ds['rounded']:.2f} mg** of {ds['drug']}")
 
-        # Always-balanced detail suffix
-        steps = []
-        if ds["use_cap"] or ds["use_round"]:
-            steps.append(f"exact {ds['exact']:.2f}")
-        if ds["use_cap"]:
-            steps.append(f"cap {ds['capped']:.2f}")
-        if ds["use_round"]:
-            steps.append(f"round {ds['round_inc']:.3g} mg")
-        detail = f" ({' → '.join(steps)})" if steps else ""
+        st.success(f"**Administered dose: {ds['final']:.2f} mg** of {ds['drug']}")
+
+        # Copyable block
+        detail_steps = []
+        if ds["use_max"] and ds["max_mg"] > 0:
+            detail_steps.append(f"max {ds['max_mg']:.2f} mg")
+        if ds["use_round"] and ds["round_inc"] > 0:
+            detail_steps.append(f"round {ds['round_inc']:.4g} mg")
+        detail = f" ({' • '.join(detail_steps)})" if detail_steps else ""
 
         dose_block_md = (
             f"- Drug: **{ds['drug']}**\n"
-            f"- Weight: **{ds['weight']:.1f} kg**\n"
-            f"- Rule: **{ds['mgkg']:.3g} mg/kg**"
-            + (f", cap **{ds['cap']:.3g} mg**" if ds["use_cap"] else "")
-            + "\n"
-            f"- Result: **{ds['rounded']:.2f} mg**{detail}"
+            f"- Weight: **{ds['weight']:.2f} kg**\n"
+            f"- Rule: **{ds['mgkg']:.4g} mg/kg**\n"
+            f"- Max dose applied: **{'Yes' if (ds['use_max'] and ds['max_mg'] > 0) else 'No'}**\n"
+            f"- Result: **{ds['final']:.2f} mg**{detail}"
         )
         with st.expander("Copy dose block"):
             st.markdown(dose_block_md)
+
+        if ds["final"] > 200:
+            st.caption("⚠️ Consider double-checking unusually large doses against the guideline.")
     else:
         st.info("Enter values and click **Calculate dose** to see the result.")
 
@@ -185,7 +220,6 @@ def render_dose_calculator_form():
 with st.sidebar:
     st.subheader("Settings")
 
-    # Refresh doc list cache
     if st.button("🔄 Refresh doc list"):
         get_doc_ids.clear()
 
@@ -208,7 +242,7 @@ with st.sidebar:
     prompts_version = st.text_input("Version (blank = latest or 'current')", "")
     show_context = st.checkbox("Show retrieved context", value=True)
 
-    # API
+    # API env
     api_ok = bool(os.getenv("OPENAI_API_KEY"))
     st.write("✅ OPENAI_API_KEY loaded" if api_ok else "⚠️ OPENAI_API_KEY missing")
 
@@ -300,6 +334,8 @@ if run_btn:
     st.session_state.queries = queries
     st.session_state.doc_id_used = doc_id
     st.session_state.error = ""
+    st.session_state.dosing_table_md = ""
+    st.session_state.dosing_queries = []
     st.rerun()
 
 # ---- Render from session (stable across reruns) ----
@@ -309,7 +345,10 @@ if st.session_state.error:
 if st.session_state.plan_ready and st.session_state.ctx:
     ctx = st.session_state.ctx
 
-    st.write("**Queries:** ", ", ".join(st.session_state.queries))
+    st.markdown("**Queries used:**")
+    for q in st.session_state.queries:
+        st.markdown(f"- {q}")
+
     if show_context:
         st.subheader("Retrieved context (stitched)")
         preview = ctx["context"][:4000] + ("..." if len(ctx["context"]) > 4000 else "")
@@ -320,5 +359,45 @@ if st.session_state.plan_ready and st.session_state.ctx:
     st.markdown(st.session_state.plan_md)
     st.caption("Citations included at the end of the response.")
 
-    # ---- Calculator appears BELOW the plan ----
+    # --- Generate dosing table (placed under the plan) ---
+    st.divider()
+    st.caption("Uses the management plan to derive dosing queries, retrieves dosing text from the guideline, then renders a table.")
+    gen_table_here = st.button("Generate dosing table (from plan + guideline)")
+
+    if gen_table_here:
+        try:
+            prompts_for_table = load_prompts_versioned(Path(prompts_base), prompts_version or None)
+
+            # Derive dosing-specific queries FROM THE PLAN (LLM-driven; versioned prompts)
+            dosing_queries = generate_dosing_queries_from_plan(st.session_state.plan_md, prompts_for_table)
+            st.session_state["dosing_queries"] = dosing_queries
+
+            # Retrieve dosing context from the same document (tune k/above/below if needed)
+            dctx = retrieve_dosing_context(
+                RAGClient(db_path=DB_PATH),
+                dosing_queries,
+                doc_id=st.session_state.doc_id_used,
+                k=6, above=1, below=2
+            )
+
+            if dctx["context"]:
+                table_md = build_dosing_table(
+                    st.session_state.plan_md, dctx["context"], dctx["pages"], prompts_for_table
+                )
+                st.session_state.dosing_table_md = table_md or ""
+            else:
+                st.session_state.dosing_table_md = ""
+                st.info("No dosing context retrieved from the guideline for the current plan.")
+        except Exception as e:
+            st.info(f"Dosing table generation failed: {e}")
+
+    if st.session_state.get("dosing_queries"):
+        st.markdown("**Dosing queries (from plan):**")
+        for q in st.session_state.dosing_queries:
+            st.markdown(f"- {q}")
+
+    if st.session_state.dosing_table_md:
+        st.markdown(st.session_state.dosing_table_md)
+
+    # ---- Calculator appears BELOW the plan (and below table if present) ----
     render_dose_calculator_form()

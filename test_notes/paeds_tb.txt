@@ -1,0 +1,41 @@
+## 🩺 Pediatric Clinical Note
+
+---
+
+### Patient Information
+- **Patient:** Sarah K.
+- **DOB:** 11/03/2020
+- **Age:** 5 years
+- **Weight:** 15 kg (Note: Documented **poor weight gain** on growth chart)
+
+### Presenting Complaint
+- Sarah presents with a **non-remitting cough** lasting **six weeks** that is not improving with standard antibiotics.
+- Parents report **intermittent low-grade fever** (mostly evening) and **decreased energy/playfulness** over the same period.
+- History of **contact** with a household member (grandfather) recently diagnosed with smear-positive pulmonary TB.
+
+### History
+- **Onset:** Chronic, non-specific symptoms began approximately 6 weeks ago.
+- **Progression:** Cough is mostly dry, persistent, and has not responded to a 7-day course of Amoxicillin.
+- **Constitutional Symptoms:** Intermittent evening temperature up to $37.8^\circ\text{C}$. Noted **weight loss** (or failure to gain weight) over the last 2 months. Reports occasional night sweats.
+- **Exposure:** Known close household contact with an adult who has confirmed **infectious PTB**.
+- **Past Medical History:** Unremarkable. No history of chronic respiratory illness.
+- **Immunization/Development:** Fully vaccinated, including BCG scar present. Developmentally appropriate for age.
+- **Allergies:** No known drug allergies.
+
+### Examination
+- **General:** Alert, cooperative, but appears **mildly thin** and **lethargic**.
+- **Vitals:** RR 24, HR 98, SpO2 98% on room air, T $37.4^\circ\text{C}$.
+- **Respiratory:** Chest clear to auscultation; no wheeze, crackles, or signs of acute respiratory distress.
+- **ENT:** Oropharynx clear.
+- **CVS:** Normal.
+- **Abdomen:** Soft, non-tender. No hepatosplenomegaly.
+- **Lymphatics:** No significant peripheral lymphadenopathy (LAD) noted.
+- **Growth:** Weight $15$ kg (below 10th percentile, confirmed poor weight trajectory).
+
+### Assessment
+- Sarah presents with symptoms (chronic cough, low-grade fever, poor weight gain) and an **epidemiological link** highly suggestive of **uncomplicated primary pulmonary Tuberculosis (PTB)**.
+- The clinical presentation is **non-severe** (no severe respiratory distress). The disease is likely **paucibacillary**.
+- **Plan to investigate** with Tuberculin Skin Test (TST)/Interferon Gamma Release Assay (IGRA) and Chest X-Ray (CXR) to support clinical diagnosis.
+
+### Plan
+- Plan as per local guidelines for childhood tuberculosis.

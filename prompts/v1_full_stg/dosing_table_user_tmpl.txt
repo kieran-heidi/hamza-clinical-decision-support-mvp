@@ -1,0 +1,12 @@
+Management plan (for context):
+{plan}
+
+Dosing context (from guideline):
+{context}
+
+Extract dosing for medications relevant to the plan. Include:
+- mg/kg rule and maximum single dose if specified
+- route and usual formulations
+- frequency (e.g., once, q6h, daily) and duration (e.g., 3 days, 5–7 days); specifically mention if an immediate dose is required
+
+Follow the JSON schema exactly and return ONLY JSON.
