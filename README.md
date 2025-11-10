@@ -38,8 +38,7 @@ source venv/bin/activate
 Install the required Python packages. You will need to create a `requirements.txt` file with the necessary libraries.
 
 ```bash
-# Install dependencies
-pip install streamlit python-dotenv openai chromadb
+pip install -r requirements.txt
 ```
 
 ### 3. Environment Variables

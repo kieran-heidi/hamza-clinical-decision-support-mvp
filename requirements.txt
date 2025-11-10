@@ -14,3 +14,4 @@ sentence-transformers==2.6.1
 transformers==4.44.2
 safetensors==0.4.4
 torch==2.9.0+cpu
+tokenizers==0.20.1
