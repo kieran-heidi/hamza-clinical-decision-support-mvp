@@ -408,3 +408,14 @@ if st.session_state.plan_ready and st.session_state.ctx:
 
     # ---- Calculator appears BELOW the plan (and below table if present) ----
     render_dose_calculator_form()
+
+with st.expander("Debug: vector store contents on server"):
+    try:
+        rag_dbg = RAGClient(db_path="./chroma_db")
+        doc_ids_dbg = rag_dbg.list_doc_ids()
+        st.write(f"Found {len(doc_ids_dbg)} doc_ids:")
+        for d in doc_ids_dbg:
+            st.code(d)
+    except Exception as e:
+        st.error(f"Failed to inspect vector store: {e}")
+
