@@ -435,4 +435,25 @@ with st.expander("🔎 Retrieval diagnostics"):
     except Exception as e:
         st.error(f"Diagnostics failed: {e}")
 
-
+import os, json, pathlib, humanize
+with st.expander("🔎 Vector store debug (server)"):
+    dbp = pathlib.Path("./chroma_db")
+    st.write("cwd:", os.getcwd())
+    st.write("DB exists:", dbp.exists(), "is_dir:", dbp.is_dir())
+    if dbp.exists():
+        files = []
+        for p in sorted(dbp.rglob("*")):
+            if p.is_file():
+                try:
+                    sz = p.stat().st_size
+                except Exception:
+                    sz = -1
+                files.append({"path": str(p), "bytes": sz})
+        st.code(json.dumps(files[:50], indent=2))
+    try:
+        rag_dbg = RAGClient(db_path="./chroma_db")
+        st.write("Chroma count():", rag_dbg.coll.count())
+        snap = rag_dbg.coll.get(include=["metadatas"], limit=3)
+        st.write("Sample metadatas:", snap.get("metadatas", []))
+    except Exception as e:
+        st.error(f"Chroma open failed: {e}")
