@@ -435,8 +435,9 @@ with st.expander("🔎 Retrieval diagnostics"):
     except Exception as e:
         st.error(f"Diagnostics failed: {e}")
 
-import os, json, pathlib, humanize
+# ---- Debug: vector store on server (no external deps) ----
 with st.expander("🔎 Vector store debug (server)"):
+    import os, json, pathlib
     dbp = pathlib.Path("./chroma_db")
     st.write("cwd:", os.getcwd())
     st.write("DB exists:", dbp.exists(), "is_dir:", dbp.is_dir())
@@ -449,7 +450,8 @@ with st.expander("🔎 Vector store debug (server)"):
                 except Exception:
                     sz = -1
                 files.append({"path": str(p), "bytes": sz})
-        st.code(json.dumps(files[:50], indent=2))
+        st.code(json.dumps(files[:50], indent=2))  # show first 50 entries
+
     try:
         rag_dbg = RAGClient(db_path="./chroma_db")
         st.write("Chroma count():", rag_dbg.coll.count())
