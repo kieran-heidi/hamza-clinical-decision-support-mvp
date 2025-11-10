@@ -236,7 +236,7 @@ with st.sidebar:
         doc_id = DOC_ID
     else:
         default_index = all_doc_ids.index(DOC_ID) if DOC_ID in all_doc_ids else 0
-        doc_id = st.selectbox("Document ID", all_doc_ids, index=default_index)
+        doc_id = st.selectbox("Guideline Document", all_doc_ids, index=default_index)
 
     # Retrieval hyperparams
     k = st.slider("Top-k", 1, 10, 4)
