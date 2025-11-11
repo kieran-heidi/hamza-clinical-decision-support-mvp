@@ -35,6 +35,8 @@ This context is used to generate the management plans and the dosing tables.
 """)
 
 DB_PATH = str(Path.cwd() / "chroma_db")
+# Ensure chroma_db directory exists
+Path(DB_PATH).mkdir(parents=True, exist_ok=True)
 
 # ---- Session state init ----
 def _init_state():

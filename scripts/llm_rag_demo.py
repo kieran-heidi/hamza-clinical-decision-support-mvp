@@ -148,15 +148,41 @@ def load_prompts_versioned(base_dir: Path, version: Optional[str]) -> Dict[str, 
 # ------------------ Chroma RAG client ------------------
 class RAGClient:
     def __init__(self, db_path="./chroma_db", collection="guidelines", embed_model=EMBED_MODEL):
-        self.client = chromadb.PersistentClient(path=db_path, settings=Settings())
-        self.coll = self.client.get_or_create_collection(name=collection)
+        # Use Settings with allow_reset to handle database migration issues
+        settings = Settings(allow_reset=False, anonymized_telemetry=False)
+        self.client = chromadb.PersistentClient(path=db_path, settings=settings)
+        
+        # Try to get or create collection, with error handling for corrupted databases
+        try:
+            self.coll = self.client.get_or_create_collection(name=collection)
+        except (KeyError, ValueError, Exception) as e:
+            # If database is corrupted, try to reset and recreate
+            print(f"Warning: Error accessing collection '{collection}': {e}")
+            print("Attempting to reset and recreate collection...")
+            try:
+                # Delete the collection if it exists and is corrupted
+                try:
+                    self.client.delete_collection(name=collection)
+                except:
+                    pass
+                # Recreate it
+                self.coll = self.client.create_collection(name=collection)
+                print(f"Collection '{collection}' recreated. You may need to re-ingest your data.")
+            except Exception as e2:
+                print(f"Failed to recreate collection: {e2}")
+                raise
+        
         self.embedder = SentenceTransformer(embed_model, device="cpu")
 
     def list_doc_ids(self) -> List[str]:
-        res = self.coll.get(include=["metadatas"])
-        metas = res.get("metadatas") or []
-        ids = {m.get("doc_id") for m in metas if m and m.get("doc_id")}
-        return sorted(x for x in ids if x)
+        try:
+            res = self.coll.get(include=["metadatas"])
+            metas = res.get("metadatas") or []
+            ids = {m.get("doc_id") for m in metas if m and m.get("doc_id")}
+            return sorted(x for x in ids if x)
+        except Exception as e:
+            print(f"Error listing doc_ids: {e}")
+            return []
 
     def _get(self, id_str):
         res = self.coll.get(ids=[id_str])
