@@ -11,4 +11,5 @@ __pycache__/
 *.md
 test_notes/
 .devcontainer/
+Dockerfile
 
