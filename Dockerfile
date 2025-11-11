@@ -26,7 +26,9 @@ ENV TOKENIZERS_PARALLELISM=false
 ENV OMP_NUM_THREADS=1
 ENV MKL_NUM_THREADS=1
 
-# Railway sets PORT dynamically - expose a common port range
+# Railway sets PORT dynamically
+# Expose a port (Railway will map to the PORT env var)
 EXPOSE 8080
-# Use shell form to access PORT environment variable
-CMD streamlit run app.py --server.port=${PORT:-8080} --server.address=0.0.0.0
+
+# Use a shell script to properly read PORT environment variable
+CMD sh -c 'streamlit run app.py --server.port=${PORT:-8080} --server.address=0.0.0.0'
