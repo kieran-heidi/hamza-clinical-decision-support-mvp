@@ -18,8 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Streamlit config for headless
-ENV STREAMLIT_PORT=7860
-ENV PORT=7860
 ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 ENV STREAMLIT_SERVER_HEADLESS=true
 
@@ -28,5 +26,7 @@ ENV TOKENIZERS_PARALLELISM=false
 ENV OMP_NUM_THREADS=1
 ENV MKL_NUM_THREADS=1
 
-EXPOSE 7860
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+# Railway sets PORT dynamically - expose a common port range
+EXPOSE 8080
+# Use shell form to access PORT environment variable
+CMD streamlit run app.py --server.port=${PORT:-8080} --server.address=0.0.0.0

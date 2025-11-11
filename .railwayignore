@@ -1,0 +1,14 @@
+# Ignore files that shouldn't be deployed to Railway
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.git/
+.gitignore
+*.md
+test_notes/
+.devcontainer/
+
